@@ -1,0 +1,46 @@
+[package]
+name = "halo-rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "halolib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "halo-rs"
+path = "src/server.rs"
+
+[dependencies]
+futures = "0.3"
+axum = { version = "0.5.3", features = ["tower-log"] }
+tokio = { version = "1.17.0", features = ["full"] }
+async-trait = { version = "0.1.53" }
+tracing = "0.1.34"
+tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
+serde = { version = "1.0.136", features = ["derive"] }
+uuid = { version = "1.0.0", features = ["serde"] }
+async-session = "3.0.0"
+anyhow = { version = "1.0.57" }
+thiserror = { version = "1.0.30" }
+dotenv = { version = "0.15.0" }
+time = { version = "0.3.1" }
+tower = { version = "0.4.12" }
+tower-http = { version = "0.2.5", features = ["trace", "add-extension"] }
+itertools = "0.10.1"
+headers = "0.3"
+jsonwebtoken = "8.1.0"
+lazy_static = "1.4"
+log = "0.4.14"
+rand = "0.8.4"
+jwt = "0.16.0"
+validator = { version = "0.14", features = ["derive"] }
+clap = { version = "3.1.11", features = ["derive", "env"] }
+sha2 = "0.10.2"
+hmac = { version = "0.12.1" }
+sqlx = { version = "0.5.13", features = [
+    "runtime-tokio-native-tls",
+    "postgres",
+    "uuid",
+    "time",
+] }
