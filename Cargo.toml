@@ -44,3 +44,4 @@ sqlx = { version = "0.5.13", features = [
     "uuid",
     "time",
 ] }
+dashmap = "5.4.0"

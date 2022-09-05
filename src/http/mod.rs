@@ -1,5 +1,6 @@
+use std::any::Any;
 use anyhow::Context;
-use async_session::MemoryStore;
+use async_session::{MemoryStore, Session, SessionStore};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::signal;
@@ -9,6 +10,7 @@ use tower_http::add_extension::AddExtensionLayer;
 mod error;
 
 mod extractor;
+mod types;
 
 pub use error::{Error, ResultExt};
 
@@ -16,13 +18,13 @@ pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
 use tower_http::trace::TraceLayer;
 
-use crate::{config::Config, service::api_router};
+use crate::{cache, config::Config, service::api_router};
 
 #[derive(Clone)]
 pub struct ApiContext {
-    config: Arc<Config>,
-    db: PgPool,
-    store: MemoryStore,
+    pub config: Arc<Config>,
+    pub db: PgPool,
+    pub store: cache::LocalCache<String, dyn Any>,
 }
 
 /// .
@@ -31,7 +33,7 @@ pub struct ApiContext {
 ///
 /// This function will return an error if .
 pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
-    let store = MemoryStore::new();
+    let store = cache::LocalCache::new();
     let app = api_router().layer(
         ServiceBuilder::new()
             .layer(AddExtensionLayer::new(ApiContext {
@@ -61,7 +63,7 @@ async fn shutdown_signal() {
     };
 
     #[cfg(unix)]
-    let terminate = async {
+        let terminate = async {
         signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("failed to install signal handler")
             .recv()
@@ -69,7 +71,7 @@ async fn shutdown_signal() {
     };
 
     #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
+        let terminate = std::future::pending::<()>();
 
     tokio::select! {
         _ = ctrl_c => {},
