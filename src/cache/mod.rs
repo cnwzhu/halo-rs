@@ -1,8 +1,8 @@
-use std::time::{Duration, Instant};
 use dashmap::DashMap;
+use std::time::{Duration, Instant};
 
-
-pub trait Cache<K, V> where
+pub trait Cache<K, V>
+where
     K: std::hash::Hash + Eq + Clone,
     V: Clone,
 {
@@ -36,7 +36,8 @@ pub struct LocalCache<K, V> {
     pub cache: DashMap<K, V>,
 }
 
-impl<K, V> LocalCache<K, V> where
+impl<K, V> LocalCache<K, V>
+where
     K: std::hash::Hash + Eq + Clone,
     V: Clone,
 {
@@ -47,7 +48,8 @@ impl<K, V> LocalCache<K, V> where
     }
 }
 
-impl<K, V> Cache<K, V> for LocalCache<K, V> where
+impl<K, V> Cache<K, V> for LocalCache<K, V>
+where
     K: std::hash::Hash + Eq + Clone,
     V: Clone,
 {

@@ -1,29 +1,31 @@
 use std::any::Any;
+use std::sync::Arc;
+
 use anyhow::Context;
 use async_session::{MemoryStore, Session, SessionStore};
-use sqlx::PgPool;
-use std::sync::Arc;
 use tokio::signal;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
+use tower_http::trace::TraceLayer;
+
+pub use error::{Error, ResultExt};
+
+use crate::{cache, config::Config, service::api_router};
 
 mod error;
 
 mod extractor;
 mod types;
 
-pub use error::{Error, ResultExt};
-
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
-
-use tower_http::trace::TraceLayer;
-
-use crate::{cache, config::Config, service::api_router};
 
 #[derive(Clone)]
 pub struct ApiContext {
     pub config: Arc<Config>,
-    pub db: PgPool,
+    #[cfg(any(feature = "postgres"))]
+    pub db: sqlx::PgPool,
+    #[cfg(any(feature = "sqlite"))]
+    pub db: sqlx::SqlitePool,
     pub store: cache::LocalCache<String, dyn Any>,
 }
 
@@ -32,7 +34,11 @@ pub struct ApiContext {
 /// # Errors
 ///
 /// This function will return an error if .
-pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
+pub async fn serve(
+    config: Config,
+    #[cfg(any(feature = "postgres"))] db: sqlx::PgPool,
+    #[cfg(any(feature = "sqlite"))] db: sqlx::SqlitePool,
+) -> anyhow::Result<()> {
     let store = cache::LocalCache::new();
     let app = api_router().layer(
         ServiceBuilder::new()
@@ -44,10 +50,6 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
             .layer(TraceLayer::new_for_http()),
     );
 
-    // We use 8080 as our default HTTP server port, it's pretty easy to remember.
-    //
-    // Note that any port below 1024 needs superuser privileges to bind on Linux,
-    // so 80 isn't usually used as a default for that reason.
     axum::Server::bind(&"0.0.0.0:8080".parse()?)
         .serve(app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())

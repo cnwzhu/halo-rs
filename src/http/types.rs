@@ -1,7 +1,8 @@
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
-use time::{Format, format_description, OffsetDateTime};
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::Visitor;
+use time::{format_description, OffsetDateTime};
 
 #[derive(sqlx::Type)]
 pub struct Timestamp(pub OffsetDateTime);
@@ -35,10 +36,13 @@ impl<'de> Deserialize<'de> for Timestamp {
                 where
                     E: serde::de::Error,
             {
-                OffsetDateTime::parse(v, &format_description::parse(
-                    "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+                OffsetDateTime::parse(
+                    v,
+                    &format_description::parse(
+                        "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
-                )?)
+                    )?,
+                )
                     .map(Timestamp)
                     .map_err(E::custom)
             }

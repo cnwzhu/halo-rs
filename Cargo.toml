@@ -3,6 +3,12 @@ name = "halo-rs"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["sqlite"]
+sqlite = ["sqlx/sqlite", "sqlx/runtime-tokio-native-tls"]
+postgres = ["sqlx/postgres", "sqlx/runtime-tokio-native-tls"]
+
+
 [lib]
 name = "halolib"
 path = "src/lib.rs"
@@ -39,9 +45,9 @@ clap = { version = "3.1.11", features = ["derive", "env"] }
 sha2 = "0.10.2"
 hmac = { version = "0.12.1" }
 sqlx = { version = "0.5.13", features = [
-    "runtime-tokio-native-tls",
-    "postgres",
     "uuid",
     "time",
 ] }
-dashmap = "5.4.0"
+dashmap = "5.2.0"
+password-hash = "0.4.0"
+argon2 = "0.4.0"

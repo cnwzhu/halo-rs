@@ -1,5 +1,5 @@
 use clap::Parser;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{Connection, Executor};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -19,7 +19,17 @@ async fn main() {
 
     let config = Config::parse();
 
-    let db = PgPoolOptions::new()
+
+    #[cfg(any(feature = "postgres"))]
+        let db = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(50)
+        .connect_timeout(std::time::Duration::from_secs(2))
+        .connect(&config.database_url)
+        .await
+        .expect("连接失败");
+
+    #[cfg(any(feature = "sqlite"))]
+        let db = sqlx::sqlite::SqlitePoolOptions::new()
         .max_connections(50)
         .connect_timeout(std::time::Duration::from_secs(2))
         .connect(&config.database_url)

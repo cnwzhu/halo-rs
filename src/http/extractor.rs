@@ -7,15 +7,14 @@ use async_trait::async_trait;
 use axum::http::header::AUTHORIZATION;
 use axum::http::HeaderValue;
 
+use crate::service::users::AuthUser;
+use crate::service::users::MaybeAuthUser;
 use jwt::{SignWithKey, VerifyWithKey};
 use sha2::Sha384;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::service::users::AuthUser;
-use crate::service::users::MaybeAuthUser;
 
 use hmac::{Hmac, Mac};
- 
 
 const DEFAULT_SESSION_LENGTH: time::Duration = time::Duration::weeks(2);
 
@@ -27,7 +26,6 @@ const SCHEME_PREFIX: &str = "Token ";
 ///
 /// Parses a JWT from the `Authorization: Token <token>` header.
 
-
 /// Add this as a parameter to a handler function to optionally check if the user is logged in.
 ///
 /// If the `Authorization` header is absent then this will be `Self(None)`, otherwise it will
@@ -35,7 +33,6 @@ const SCHEME_PREFIX: &str = "Token ";
 ///
 /// This is in contrast to directly using `Option<AuthUser>`, which will be `None` if there
 /// is *any* error in deserializing, which isn't exactly what we want.
-
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct AuthUserClaims {
