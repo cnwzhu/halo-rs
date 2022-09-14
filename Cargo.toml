@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "halo-rs"
-path = "src/server.rs"
+path = "src/bin/server.rs"
 
 [dependencies]
 futures = "0.3"
@@ -48,6 +48,11 @@ sqlx = { version = "0.5.13", features = [
     "uuid",
     "time",
 ] }
-dashmap = "5.2.0"
 password-hash = "0.4.0"
 argon2 = "0.4.0"
+cache = { path = "lib/cache" }
+
+[workspace]
+members = [
+    "lib/cache"
+]
