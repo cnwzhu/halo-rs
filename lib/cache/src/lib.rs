@@ -24,19 +24,19 @@ pub enum Entry<V: Clone + Sized + Display + Debug + PartialEq> {
 #[derive(Clone, Debug)]
 struct InternalEntry<V: Clone + Sized + Display + Debug + PartialEq> {
     value: Entry<V>,
-    expiration: Instant,
+    expiration: Option<Instant>,
 }
 
 impl<V> InternalEntry<V> where V: Clone + Sized + Display + Debug + PartialEq {
     fn new(v: Entry<V>, duration: Option<Duration>) -> Self {
         InternalEntry {
             value: v,
-            expiration: Instant::,
+            expiration: duration.map(|x|Instant::now() + x),
         }
     }
 
     fn is_expired(&self) -> bool {
-        Instant::now() > self.expiration
+         self.expiration.map(|x| Instant::now() > x).unwrap_or(false)
     }
 }
 
@@ -61,26 +61,21 @@ impl<V> Cache<V> for LocalCache<V>
         V: Clone + Sized + Display + Debug + PartialEq,
 {
     fn get(&self, key: &str) -> Option<Entry<V>> {
-        match self.cache.get(key) {
-            None => { None }
-            Some(v) => {
-                let entry = v.clone();
-                if entry.is_expired() {
-                    self.del(key);
-                    None
-                } else {
-                    Some(entry.value)
-                }
-            }
+        let value  = self.cache.get(key);
+        if value.is_none() {
+            return None;
+        }
+        let entry = value.unwrap().clone();
+        if entry.is_expired() {
+            self.del(key);
+            None
+        } else {
+            Some(entry.value)
         }
     }
 
     fn set(&self, key: String, value: Entry<V>, ttl: Option<Duration>) {
-        if let Some(ttl) = ttl {
-            self.cache.insert(key, InternalEntry::new(value, ttl));
-        } else {
-            self.cache.insert(key, InternalEntry::new(value, Duration::MAX));
-        }
+        self.cache.insert(key, InternalEntry::new(value, ttl));
     }
 
     fn del(&self, key: &str) {
@@ -94,16 +89,30 @@ impl<V> Cache<V> for LocalCache<V>
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
 
     use super::*;
 
     #[test]
+    fn test_local_cache_none_ttl() {
+        let cache = LocalCache::new();
+        cache.set("key".to_string(), Entry::Value("value".to_string()), None);
+        std::thread::sleep(Duration::from_secs(1));
+        assert_eq!(cache.get("key"), Some(Entry::Value("value".to_string())));
+    }
+
+    #[test]
+    fn test_local_cache_ttl() {
+        let cache = LocalCache::new();
+        cache.set("key".to_string(), Entry::Value("value".to_string()), Some(Duration::from_secs(1)));
+        std::thread::sleep(Duration::from_secs(1));
+        assert_ne!(cache.get("key"), Some(Entry::Value("value".to_string())));
+    }
+
+    #[test]
     fn test_local_cache() {
         let cache = LocalCache::new();
-        cache.set("key".to_string(), Entry::Value("value".to_string()), Some(Duration::from_secs(1000)));
-        dbg!(cache.get("key"));
-        assert_eq!(cache.get("key").unwrap(), Entry::Value("value".to_string()));
+        cache.set("key".to_string(), Entry::Value("value".to_string()), Some(Duration::from_secs(10)));
+        assert_eq!(cache.get("key"), Some(Entry::Value("value".to_string())));
     }
 }
 

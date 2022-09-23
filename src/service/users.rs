@@ -1,6 +1,5 @@
 use anyhow::Context;
 use argon2::Argon2;
-use async_session::SessionStore;
 use axum::{
     Extension,
     Json, Router, routing::{get, post},
@@ -8,7 +7,7 @@ use axum::{
 use password_hash::{PasswordHash, SaltString};
 use uuid::Uuid;
 
-use crate::http::{ApiContext, Error};
+use crate::http::{ApiContext, Error, types::Timestamp};
 use crate::http::Result;
 
 pub fn router() -> Router {
@@ -42,10 +41,10 @@ pub struct UserDO {
     pub email: String,
     pub avatar: Option<String>,
     pub description: Option<String>,
-    pub expired_at: Option<time::OffsetDateTime>,
-    pub created_at: time::OffsetDateTime,
-    pub updated_at: time::OffsetDateTime,
-    pub last_login_time: Option<time::OffsetDateTime>,
+    pub expired_at: Option<Timestamp>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
+    pub last_login_time: Option<Timestamp>,
     pub last_login_ip: Option<String>,
     pub mfa_type: u8,
     pub mfa_key: Option<String>,
@@ -73,9 +72,10 @@ async fn create_user(
     ctx: Extension<ApiContext>,
     Json(req): Json<UserBody<NewUser>>,
 ) -> Result<Json<UserBody<User>>> {
-    let now = time::OffsetDateTime::now_utc();
+    let now = Timestamp::now();
     let password_hash = hash_password(req.user.password).await?;
     let user = sqlx::query!(
+          User,
         r#"
         INSERT INTO user (username, email, password_hash, created_at, updated_at, mfa_type)
         VALUES  ($1, $2, $3, $4, $5, $6)
@@ -89,14 +89,7 @@ async fn create_user(
         0
     )
         .fetch_one(&ctx.db)
-        .await
-        .on_constraint("user_username_key", |_| {
-            Error::unprocessable_entity([("username", "username taken")])
-        })
-        .on_constraint("user_email_key", |_| {
-            Error::unprocessable_entity([("email", "email taken")])
-        })?;
-
+        .await?;
     Ok(Json(UserBody { user }))
 }
 
@@ -105,6 +98,7 @@ async fn login_user(
     Json(req): Json<UserBody<LoginUser>>,
 ) -> Result<Json<UserBody<User>>> {
     let user = sqlx::query!(
+        UserDO,
         r#"
             select id, username, nickname, avatar, description
             from user where email = $1 or username = $1
@@ -156,6 +150,7 @@ async fn get_current_user(
     ctx: Extension<ApiContext>,
 ) -> Result<Json<UserBody<User>>> {
     let user = sqlx::query!(
+        User,
         r#"
             select id, username, nickname, avatar, description
             from user where id = $1

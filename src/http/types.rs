@@ -1,21 +1,29 @@
 use std::fmt::Formatter;
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, ser, Serialize, Serializer};
 use serde::de::Visitor;
 use time::{format_description, OffsetDateTime};
 
 #[derive(sqlx::Type)]
 pub struct Timestamp(pub OffsetDateTime);
 
+impl Timestamp {
+    pub fn now() -> Self {
+        Self(OffsetDateTime::now_utc())
+    }
+}
+
 impl Serialize for Timestamp {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
     {
-        serializer.collect_str(&self.0.format(&format_description::parse(
+        let format = format_description::parse(
             "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
          sign:mandatory]:[offset_minute]:[offset_second]",
-        )?))
+        ).map_err(|e| ser::Error::custom(e.to_string()))?;
+        let s =  self.0.format(&format).map_err(|e|ser::Error::custom(e.to_string()))?;
+        serializer.collect_str(&s)
     }
 }
 
@@ -36,15 +44,13 @@ impl<'de> Deserialize<'de> for Timestamp {
                 where
                     E: serde::de::Error,
             {
-                OffsetDateTime::parse(
-                    v,
-                    &format_description::parse(
-                        "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
-         sign:mandatory]:[offset_minute]:[offset_second]",
-                    )?,
-                )
-                    .map(Timestamp)
-                    .map_err(E::custom)
+                let format =  format_description::parse(
+                    "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour \
+     sign:mandatory]:[offset_minute]:[offset_second]",
+                ).map_err(|e|serde::de::Error::custom(e.to_string()))?;
+               let time = OffsetDateTime::parse(   v, &format)
+               .map_err(|e|serde::de::Error::custom(e.to_string()))?;
+               Ok(Timestamp(time))
             }
         }
         deserializer.deserialize_str(StrVisitor)
