@@ -30,7 +30,7 @@ async-session = "3.0.0"
 anyhow = { version = "1.0.57" }
 thiserror = { version = "1.0.30" }
 dotenv = { version = "0.15.0" }
-time = { version = "0.3.1" }
+chrono = "0.4"
 tower = { version = "0.4.12" }
 tower-http = { version = "0.2.5", features = ["trace", "add-extension"] }
 itertools = "0.10.1"
@@ -44,15 +44,10 @@ validator = { version = "0.14", features = ["derive"] }
 clap = { version = "3.1.11", features = ["derive", "env"] }
 sha2 = "0.10.2"
 hmac = { version = "0.12.1" }
-sqlx = { version = "0.5.13", features = [
-    "uuid",
-    "time",
-] }
+sqlx = { version = "0.5.13", features = ["uuid", "chrono"] }
 password-hash = "0.4.0"
 argon2 = "0.4.0"
 cache = { path = "lib/cache" }
 
 [workspace]
-members = [
-    "lib/cache"
-]
+members = ["lib/cache"]

@@ -5,9 +5,8 @@ use axum::{
     Json, Router, routing::{get, post},
 };
 use password_hash::{PasswordHash, SaltString};
-use uuid::Uuid;
 
-use crate::http::{ApiContext, Error, types::Timestamp};
+use crate::http::{ApiContext, Error};
 use crate::http::Result;
 
 pub fn router() -> Router {
@@ -18,33 +17,33 @@ pub fn router() -> Router {
 }
 
 pub struct AuthUser {
-    pub user_id: Uuid,
+    pub user_id: i64,
 }
 
 pub struct MaybeAuthUser(pub Option<AuthUser>);
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct User {
-    pub id: i32,
+    pub id: i64,
     pub username: String,
     pub nickname: Option<String>,
     pub avatar: Option<String>,
     pub description: Option<String>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(sqlx::FromRow)]
 pub struct UserDO {
-    pub id: i32,
+    pub id: i64,
     pub username: String,
     pub nickname: Option<String>,
     pub password_hash: String,
     pub email: String,
     pub avatar: Option<String>,
     pub description: Option<String>,
-    pub expired_at: Option<Timestamp>,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
-    pub last_login_time: Option<Timestamp>,
+    pub expired_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub last_login_time: Option<chrono::DateTime<chrono::Utc>>,
     pub last_login_ip: Option<String>,
     pub mfa_type: u8,
     pub mfa_key: Option<String>,
@@ -72,25 +71,17 @@ async fn create_user(
     ctx: Extension<ApiContext>,
     Json(req): Json<UserBody<NewUser>>,
 ) -> Result<Json<UserBody<User>>> {
-    let now = Timestamp::now();
+    let now = chrono::Utc::now();
     let password_hash = hash_password(req.user.password).await?;
-    let user = sqlx::query!(
-          User,
+
+    let user = sqlx::query_scalar!(
         r#"
         INSERT INTO user (username, email, password_hash, created_at, updated_at, mfa_type)
-        VALUES  ($1, $2, $3, $4, $5, $6)
-        RETURNING id, username, nickname, avatar, description
-    "#,
-        &req.user.username,
-        &req.user.email,
-        &password_hash,
-        &now,
-        &now,
-        0
-    )
+        VALUES  (?, ?, ?, ?, ?, ?)
+        "#,req.user.username,req.user.email,password_hash,now,now, 0u8)
         .fetch_one(&ctx.db)
         .await?;
-    Ok(Json(UserBody { user }))
+    todo!()
 }
 
 async fn login_user(
@@ -98,12 +89,11 @@ async fn login_user(
     Json(req): Json<UserBody<LoginUser>>,
 ) -> Result<Json<UserBody<User>>> {
     let user = sqlx::query!(
-        UserDO,
         r#"
-            select id, username, nickname, avatar, description
+            select id, username, nickname, avatar, description, password_hash
             from user where email = $1 or username = $1
         "#,
-        req.user.email,
+        req.user.email
     )
         .fetch_optional(&ctx.db)
         .await?
@@ -113,8 +103,7 @@ async fn login_user(
         )]))?;
 
     verify_password(req.user.password, user.password_hash).await?;
-
-    Ok(Json(UserBody { user }))
+    todo!()
 }
 
 async fn verify_password(password: String, password_hash: String) -> Result<()> {
@@ -150,7 +139,6 @@ async fn get_current_user(
     ctx: Extension<ApiContext>,
 ) -> Result<Json<UserBody<User>>> {
     let user = sqlx::query!(
-        User,
         r#"
             select id, username, nickname, avatar, description
             from user where id = $1
@@ -160,5 +148,5 @@ async fn get_current_user(
         .fetch_optional(&ctx.db)
         .await?
         .ok_or(Error::unprocessable_entity([("user id", "does not exist")]))?;
-    Ok(Json(UserBody { user }))
+    todo!()
 }
